@@ -11,7 +11,7 @@ from .schema import ActionInfo, EnvException
 
 
 async def understand_file(file_name, things_to_look_for, work_dir=".", **kwargs):
-    lines = read_file(file_name, work_dir=work_dir, **kwargs).split("\n")
+    lines = (await read_file(file_name, work_dir=work_dir, **kwargs)).split("\n")
     # group lines to blocks so that each block has at most 10000 characters
     counter = 0
     blocks = []
@@ -65,7 +65,7 @@ async def understand_file(file_name, things_to_look_for, work_dir=".", **kwargs)
 
 
 async def append_to_research_log(content, work_dir=".", **kwargs):
-    append_file("research_log.log", content + "\n", work_dir=work_dir, **kwargs)
+    await append_file("research_log.log", content + "\n", work_dir=work_dir, **kwargs)
 
     return "Successfully appended to research log"
 
@@ -82,7 +82,7 @@ async def inspect_script_lines(
         raise EnvException("the number of lines to display is limited to 100 lines")
     try:
         # lines = open(os.path.join(work_dir,script_name)).readlines()
-        lines = read_file(script_name, work_dir=work_dir, **kwargs).split("\n")
+        lines = (await read_file(script_name, work_dir=work_dir, **kwargs)).split("\n")
     except:
         raise EnvException(f"cannot find script {script_name}")
 
@@ -101,9 +101,9 @@ async def edit_script(
 ):
     # TODO: handle long file editing
     try:
-        content = read_file(script_name, work_dir=work_dir, **kwargs)
+        content = await read_file(script_name, work_dir=work_dir, **kwargs)
     except:
-        write_file(script_name, "", work_dir=work_dir, **kwargs)
+        await write_file(script_name, "", work_dir=work_dir, **kwargs)
         content = ""
 
     prompt = f"""Given this python script:
@@ -135,7 +135,7 @@ async def edit_script(
         "shutil.copyfile", os.path.join(work_dir, script_name), backup_name
     )
 
-    write_file(save_name, new_content, work_dir=work_dir, **kwargs)
+    await write_file(save_name, new_content, work_dir=work_dir, **kwargs)
 
     diff = list(
         difflib.unified_diff(
@@ -167,9 +167,9 @@ async def edit_script_lines(
         raise EnvException("start_line_number and end_line_number must be integers")
 
     try:
-        orig_content = read_file(script_name, env_adapter, work_dir=work_dir, **kwargs)
+        orig_content = await read_file(script_name, env_adapter, work_dir=work_dir, **kwargs)
     except:
-        write_file(script_name, "", work_dir=work_dir, **kwargs)
+        await write_file(script_name, "", work_dir=work_dir, **kwargs)
         orig_content = ""
     lines = orig_content.split("\n")
     content = "\n".join(
@@ -209,7 +209,7 @@ async def edit_script_lines(
     )
     shutil.copyfile(os.path.join(work_dir, script_name), backup_name)
 
-    write_file(save_name, new_content, work_dir=work_dir, **kwargs)
+    await write_file(save_name, new_content, work_dir=work_dir, **kwargs)
 
     diff = list(
         difflib.unified_diff(
@@ -225,7 +225,7 @@ async def edit_script_lines(
 
 
 async def reflection(things_to_reflect_on, work_dir=".", research_problem="", **kwargs):
-    research_log_content = read_file("research_log.log", work_dir=work_dir, **kwargs)
+    research_log_content = await read_file("research_log.log", work_dir=work_dir, **kwargs)
 
     prompt = f"""We are trying to solve this research problem: {research_problem}
     Your current research log:
@@ -242,7 +242,7 @@ async def reflection(things_to_reflect_on, work_dir=".", research_problem="", **
 async def retrieval_from_research_log(current_plan, work_dir=".", **kwargs):
     research_problem = kwargs["research_problem"]
 
-    research_log_content = read_file("research_log.log", work_dir=work_dir, **kwargs)
+    research_log_content = await read_file("research_log.log", work_dir=work_dir, **kwargs)
 
     prompt = f"""We are trying to solve this research problem: {research_problem}
 Your current Research Plan and Status

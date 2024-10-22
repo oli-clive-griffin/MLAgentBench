@@ -152,7 +152,9 @@ class Agent(ABC):
         for tool_name in tool_names:
             tools_prompt += f"""- {tool_name}:
         """
-            tools_prompt += cls.construct_tool_prompt(tool_name, action_infos[tool_name])
+            tools_prompt += cls.construct_tool_prompt(
+                tool_name, action_infos[tool_name]
+            )
         return tools_prompt
 
     @staticmethod
@@ -216,8 +218,8 @@ class Agent(ABC):
         return result
 
     @staticmethod
-    def print_action(entries, valid_format_entires):
-        """Print the action in a readable format."""
+    def format_action(entries, valid_format_entires):
+        """Formats the action in a readable format."""
         return "".join([k + ": " + entries[k] for k in valid_format_entires])
 
     @staticmethod
@@ -239,8 +241,8 @@ class Agent(ABC):
 class BaselineAgent(Agent):
     async def run(self, env: Environment):
         # A simple baseline that always executes train.py and reports final answer
-        env.execute(Action("Execute Script", {"script_name": "train.py"}))
-        env.execute(Action("Final Answer", "Done!"))
+        await env.execute(Action("Execute Script", {"script_name": "train.py"}))
+        await env.execute(Action("Final Answer", "Done!"))
 
 
 initial_prompt = """You are a helpful research assistant. You have access to the following tools:
@@ -343,7 +345,7 @@ class ResearchAgent(Agent):
 
             for idx in range(max(curr_step - last_steps, 0), curr_step):
                 action_string = ""
-                action_string = self.print_action(
+                action_string = self.format_action(
                     self.history_steps[idx]["action"], self.valid_format_entires
                 )
 
@@ -418,7 +420,7 @@ class ResearchAgent(Agent):
                 f.write(
                     anthropic.AI_PROMPT
                     + "\n"
-                    + self.print_action(entries, self.valid_format_entires)
+                    + self.format_action(entries, self.valid_format_entires)
                     + "\nObservation:\n"
                 )
 
@@ -457,7 +459,7 @@ class ResearchAgent(Agent):
 
                 print("Observation is too long. Summarizing...", file=sys.stderr)
                 observation = self.summarize_observation(
-                    self.print_action(entries, self.valid_format_entires),
+                    self.format_action(entries, self.valid_format_entires),
                     observation,
                     log_file,
                 )
@@ -492,7 +494,7 @@ class ResearchAgent(Agent):
                             self.log_dir, f"step_{curr_step}_summary_log.log"
                         )
                         summary_of_last_step = self.summarize_action_and_observation(
-                            self.print_action(
+                            self.format_action(
                                 self.history_steps[-1]["action"],
                                 self.valid_format_entires,
                             ),

@@ -31,19 +31,17 @@ class TimeoutException(Exception):
 
 
 class Environment:
-    def __init__(self, args: Args):
+    def __init__(self, args: Args, read_only_files: list[str]):
         self._args = args
 
         self._log_dir = os.path.join(args.log_dir, "env_log")
         setup_log_dir(self._log_dir)
 
         self._benchmark_folder_name = args.task
-        self._work_dir = os.path.join(args.work_dir, self._benchmark_folder_name)
-
         self._research_problem = get_research_problem(self._benchmark_folder_name)
-        self._read_only_files = initialize_task_env(
-            args.work_dir, self._benchmark_folder_name, args.python
-        )
+
+        self._work_dir = os.path.join(args.work_dir, self._benchmark_folder_name)
+        self._read_only_files = read_only_files
 
         self._action_infos = {
             t.name: t for t in LOW_LEVEL_ACTION_INFOS + HIGH_LEVEL_ACTION_INFOS
@@ -132,9 +130,8 @@ class Environment:
             or time.time() - self._start_time > self._args.max_time
         )
 
-    def execute(self, action: Action):
+    async def execute(self, action: Action):
         """Execute an action and return the observation."""
-
         curr_step = len(self.trace.steps)
 
         if action.name == "Final Answer":
@@ -166,7 +163,7 @@ class Environment:
 
             if isinstance(action.args, dict):
                 try:
-                    observation = self._action_infos[action.name].function(
+                    observation = await self._action_infos[action.name].function(
                         **action.args,
                         log_file=log_file,
                         trace=self.trace,

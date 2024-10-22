@@ -82,6 +82,7 @@ class ResearchAgent(Agent):
         while (
             not env.is_final() and len(self.history_steps) < self.args.agent_max_steps
         ):
+            print("Step", len(self.history_steps))
             curr_step = len(self.history_steps)
 
             #### call LLM for next action ###
@@ -94,7 +95,7 @@ class ResearchAgent(Agent):
             if curr_step > last_steps:
                 if self.args.retrieval:
                     # retrieval action
-                    relevant_history = env.execute(
+                    relevant_history = await env.execute(
                         Action("Retrieval from Research Log", {"current_plan": ""})
                     )
 
@@ -110,7 +111,7 @@ class ResearchAgent(Agent):
 
             for idx in range(max(curr_step - last_steps, 0), curr_step):
                 action_string = ""
-                action_string = self.print_action(
+                action_string = self.format_action(
                     self.history_steps[idx]["action"], self.valid_format_entires
                 )
 
@@ -185,7 +186,7 @@ class ResearchAgent(Agent):
                 f.write(
                     anthropic.AI_PROMPT
                     + "\n"
-                    + self.print_action(entries, self.valid_format_entires)
+                    + self.format_action(entries, self.valid_format_entires)
                     + "\nObservation:\n"
                 )
 
@@ -194,7 +195,7 @@ class ResearchAgent(Agent):
             ########################################
 
             if isinstance(action_input, dict):
-                observation = env.execute(Action(action, action_input))
+                observation = await env.execute(Action(action, action_input))
             else:
                 # parsing failed, give agent parsing error
                 usage = ",\n            ".join(
@@ -224,7 +225,7 @@ class ResearchAgent(Agent):
 
                 print("Observation is too long. Summarizing...", file=sys.stderr)
                 observation = self.summarize_observation(
-                    self.print_action(entries, self.valid_format_entires),
+                    self.format_action(entries, self.valid_format_entires),
                     observation,
                     log_file,
                 )
@@ -259,7 +260,7 @@ class ResearchAgent(Agent):
                             self.log_dir, f"step_{curr_step}_summary_log.log"
                         )
                         summary_of_last_step = self.summarize_action_and_observation(
-                            self.print_action(
+                            self.format_action(
                                 self.history_steps[-1]["action"],
                                 self.valid_format_entires,
                             ),
@@ -279,7 +280,7 @@ class ResearchAgent(Agent):
                     + summary_of_last_step
                     + "\n"
                 }
-                env.execute(Action(action, action_input))
+                await env.execute(Action(action, action_input))
 
             step_idx = len(env.trace.steps) - 1
             self.save(os.path.join(self.log_dir, f"agent_{step_idx}_{curr_step}.json"))

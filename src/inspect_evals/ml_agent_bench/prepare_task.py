@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import sys
+from inspect_ai.util import sandbox
 
 TASKS_DIR = os.path.dirname(os.path.realpath(__file__)) + "/tasks"
 
@@ -29,32 +30,42 @@ def setup_log_dir(log_dir: str):
         print("tools_log_dir {} already exists".format(os.path.join(log_dir, "traces")))
         # raise ValueError("log_dir {} already exists".format(self.log_dir))
     else:
-        os.makedirs(os.path.join(log_dir, "traces"))
+       os.makedirs(os.path.join(log_dir, "traces")) 
+
+    print("done setup")
+    print(f"{os.getcwd()=}")
+    print(f'{os.path.join(log_dir, "traces")=}')
 
 
-def initialize_task_env(work_dir: str, task_folder_name: str, python: str) -> list[str]:
+async def initialize_task_env(work_dir: str, task_folder_name: str, python: str) -> list[str]:
     # remove the workspace folder if it exists
-    if os.path.exists(work_dir):
-        shutil.rmtree(work_dir)
+    # if os.path.exists(work_dir):
+    #     print(f"removing {work_dir}")
+    #     shutil.rmtree(work_dir)
+    # else:
+    #     print(f"{work_dir} does not exist, not removing")
 
-    benchmark_dir = os.path.join(
+    task_dir = os.path.join(
         os.path.dirname(os.path.realpath(__file__)),
-        "benchmarks",
+        "tasks",
         task_folder_name,
     )
 
     # prepare if there is a prepare.py and it has not been prepared
-    prepare_task(benchmark_dir, python)
+    await prepare_task(task_dir, python)
 
-    # copy the benchmarks folder to work_dir
-    if os.path.exists(os.path.join(benchmark_dir, "env")):
-        shutil.copytree(os.path.join(benchmark_dir, "env"), work_dir, symlinks=True)
+    # copy the tasks folder to work_dir
+    if os.path.exists(os.path.join(task_dir, "env")):
+        print(f"copying {os.path.join(task_dir, 'env')} to {work_dir}")
+        shutil.copytree(os.path.join(task_dir, "env"), work_dir, symlinks=True)
+    else:
+        print(f"task_dir {task_dir} does not contain env")
 
     # find all read only files
     read_only_files: list[str] = []
-    if os.path.exists(os.path.join(benchmark_dir, "scripts", "read_only_files.txt")):
+    if os.path.exists(os.path.join(task_dir, "scripts", "read_only_files.txt")):
         ignore_files = (
-            open(os.path.join(benchmark_dir, "scripts", "read_only_files.txt"), "r")
+            open(os.path.join(task_dir, "scripts", "read_only_files.txt"), "r")
             .read()
             .split("\n")
         )
@@ -69,7 +80,8 @@ def initialize_task_env(work_dir: str, task_folder_name: str, python: str) -> li
     # init backup folder and remove all content if it exists
     if os.path.exists(os.path.join(work_dir, "backup")):
         shutil.rmtree(os.path.join(work_dir, "backup"))
-    os.mkdir(os.path.join(work_dir, "backup"))
+
+    os.makedirs(os.path.join(work_dir, "backup"), exist_ok=True)
 
     return read_only_files
 
@@ -85,10 +97,13 @@ def get_research_problem(task: str) -> str:
 
     if task not in available_tasks:
         raise ValueError(
-            f"task {task} not supported in benchmarks, available tasks: {available_tasks}"
+            f"task {task} not supported in tasks, available tasks: {available_tasks}"
         )
 
-    with open(os.path.join(TASKS_DIR, task, "research_problem.txt"), "r") as f:
+    research_problem_file = os.path.join(
+        TASKS_DIR, task, "scripts", "research_problem.txt"
+    )
+    with open(research_problem_file, "r") as f:
         research_problem = f.read()
 
     return research_problem
@@ -112,7 +127,7 @@ def get_research_problem(task: str) -> str:
 #         benchmark_folder_name = task
 
 #     else:
-#         raise ValueError(f"task {task} not supported in benchmarks")
+#         raise ValueError(f"task {task} not supported in tasks")
 
 #     if research_problem is None:
 #         research_problem_file = os.path.join(
@@ -125,21 +140,25 @@ def get_research_problem(task: str) -> str:
 
 #     return benchmark_folder_name, research_problem
 
+async def sb_file_exists(path: str) -> bool:
+    return (await sandbox().exec(["ls", "-la", path])).stdout.strip() != ""
 
-def prepare_task(benchmark_dir, python="python"):
+async def prepare_task(task_dir, python="python"):
     """Run prepare.py in the scripts folder of the benchmark if it exists and has not been run yet."""
-    if os.path.exists(
-        os.path.join(benchmark_dir, "scripts", "prepare.py")
-    ) and not os.path.exists(os.path.join(benchmark_dir, "scripts", "prepared")):
+    prepare_script_path = os.path.join(task_dir, "scripts", "prepare.py")
+    prepare_script_exists = await sb_file_exists(prepare_script_path)
+
+    if prepare_script_exists:
         print("Running prepare.py ...")
-        p = subprocess.run(
-            [python, "prepare.py"], cwd=os.path.join(benchmark_dir, "scripts")
+        p = await sandbox().exec(
+            [python, "prepare.py"], cwd=os.path.join(task_dir, "scripts")
         )
         if p.returncode != 0:
             print("prepare.py failed")
+            print(p)
             sys.exit(1)
         else:
-            with open(os.path.join(benchmark_dir, "scripts", "prepared"), "w") as f:
+            with open(os.path.join(task_dir, "scripts", "prepared"), "w") as f:
                 f.write("success")
         print("prepare.py finished")
     else:
@@ -153,5 +172,5 @@ def prepare_task(benchmark_dir, python="python"):
 #     else:
 #         python = "python"
 #     benchmark_name, _ = get_task_info(task)
-#     benchmark_dir = os.path.join(tasks_dir, benchmark_name)
-#     prepare_task(benchmark_dir, python=python)
+#     task_dir = os.path.join(tasks_dir, benchmark_name)
+#     prepare_task(task_dir, python=python)

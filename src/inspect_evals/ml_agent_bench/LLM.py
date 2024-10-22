@@ -9,6 +9,7 @@ from .schema import LLMError, TooLongPromptError  # noqa: F401
 async def complete_text(prompt: str, log_file: str, model_name: str | None = None) -> str:
     """Complete text using the specified model with appropriate API."""
     model = get_model(model_name)
+    print("model", model)
     completion = (await model.generate(prompt)).choices[0].message.text
     log_to_file(log_file, prompt, completion, model_name)
     return completion

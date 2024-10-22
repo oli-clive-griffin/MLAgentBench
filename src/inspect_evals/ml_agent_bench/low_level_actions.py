@@ -111,11 +111,13 @@ def check_file_in_work_dir(arg_names: list[str]):
 @record_low_level_step
 async def list_files(dir_path: str, work_dir: str = ".", **kwargs):
     try:
-        observation = subprocess.check_output(
-            ["ls", "-F", os.path.join(work_dir, dir_path)]
-        ).decode("utf-8")
-        return observation
-    except:
+        # observation = subprocess.check_output(
+        #     ["ls", "-F", os.path.join(work_dir, dir_path)]
+        # ).decode("utf-8")
+        result = await sandbox().exec(["ls", "-F", os.path.join(work_dir, dir_path)])
+        return result.stdout
+    except Exception as e:
+        print("error", e)
         raise EnvException(f"Cannot list file in the {dir_path} directory")
 
 
@@ -125,7 +127,8 @@ async def read_file(file_name: str, work_dir: str = ".", **kwargs):
     try:
         result = await sandbox().exec(["cat", os.path.join(work_dir, file_name)])
         return result.stdout
-    except:
+    except Exception as e:
+        print("error", e)
         raise EnvException(f"cannot read file {file_name}")
 
 
@@ -137,7 +140,8 @@ async def write_file(file_name: str, content: str, work_dir: str = ".", **kwargs
         await sandbox().write_file(os.path.join(work_dir, file_name), content)
         observation = f"File {file_name} written successfully."
         return observation
-    except:
+    except Exception as e:
+        print("error", e)
         raise EnvException(f"cannot write file {file_name}")
 
 
@@ -152,7 +156,8 @@ async def append_file(file_name: str, content: str, work_dir: str = ".", **kwarg
         )
         observation = f"File {file_name} appended successfully."
         return observation
-    except:
+    except Exception as e:
+        print("error", e)
         raise EnvException(f"cannot append file {file_name}")
 
 
@@ -166,7 +171,8 @@ async def copy_file(source: str, destination: str, work_dir: str = ".", **kwargs
         await sandbox().exec(["cp", src, dst])
         observation = f"File {source} copied to {destination}"
         return observation
-    except:
+    except Exception as e:
+        print("error", e)
         raise EnvException(
             f"File {source} copy to {destination} failed. Check whether the source and destinations are valid."
         )
@@ -196,7 +202,8 @@ async def undo_edit_script(script_name: str, work_dir: str = ".", **kwargs):
             f"Content of {script_name} after undo the most recent edit:\n" + new_content
         )
         return observation
-    except:
+    except Exception as e:
+        print("error", e)
         raise EnvException(
             f"Cannot undo the edit of file name {script_name}. Check the file name again."
         )
@@ -232,6 +239,7 @@ async def execute_script(script_name: str, work_dir: str = ".", **kwargs):
         return "The script has been executed. Here is the output:\n" + observation
 
     except Exception as e:
+        print("error", e)
         raise EnvException(
             f"Something went wrong in executing {script_path}: {e}. Please check if it is ready to be executed."
         )
@@ -239,6 +247,7 @@ async def execute_script(script_name: str, work_dir: str = ".", **kwargs):
 
 @record_low_level_step
 async def python_repl(command, work_dir=".", **kwargs):
+    raise EnvException("Not implemented")
     """Run command and returns anything printed."""
     try:
         cwd = os.getcwd()
