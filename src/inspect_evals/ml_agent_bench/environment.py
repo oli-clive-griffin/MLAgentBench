@@ -15,8 +15,8 @@ from .high_level_actions import HIGH_LEVEL_ACTION_INFOS
 from .low_level_actions import LOW_LEVEL_ACTION_INFOS
 from .prepare_task import get_research_problem, initialize_task_env, setup_log_dir
 from .schema import (
-    ActionInfo,
     Action,
+    ActionInfo,
     EnhancedJSONEncoder,
     EnvException,
     LLMError,
@@ -170,7 +170,6 @@ class Environment:
                         **action.args,
                         log_file=log_file,
                         trace=self.trace,
-                        sandbox=self._sandbox,
                         **self._static_kwargs_for_tools,
                     )
                 except TooLongPromptError:
