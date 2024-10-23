@@ -84,7 +84,7 @@ def check_files_read_only(arg_names: list[str], **kwargs):
     return inner
 
 
-def check_file_in_work_dir(arg_names: list[str]):
+def check_files_in_work_dir(arg_names: list[str]):
     """This decorator checks if the file is in the work directory."""
 
     def inner(func):
@@ -107,7 +107,7 @@ def check_file_in_work_dir(arg_names: list[str]):
     return inner
 
 
-@check_file_in_work_dir(["dir_path"])
+@check_files_in_work_dir(["dir_path"])
 @record_low_level_step
 async def list_files(dir_path: str, work_dir: str = ".", **kwargs):
     try:
@@ -121,7 +121,7 @@ async def list_files(dir_path: str, work_dir: str = ".", **kwargs):
         raise EnvException(f"Cannot list file in the {dir_path} directory")
 
 
-@check_file_in_work_dir(["file_name"])
+@check_files_in_work_dir(["file_name"])
 @record_low_level_step
 async def read_file(file_name: str, work_dir: str = ".", **kwargs):
     try:
@@ -132,7 +132,7 @@ async def read_file(file_name: str, work_dir: str = ".", **kwargs):
         raise EnvException(f"cannot read file {file_name}")
 
 
-@check_file_in_work_dir(["file_name"])
+@check_files_in_work_dir(["file_name"])
 @check_files_read_only(["file_name"])
 @record_low_level_step
 async def write_file(file_name: str, content: str, work_dir: str = ".", **kwargs):
@@ -145,7 +145,7 @@ async def write_file(file_name: str, content: str, work_dir: str = ".", **kwargs
         raise EnvException(f"cannot write file {file_name}")
 
 
-@check_file_in_work_dir(["file_name"])
+@check_files_in_work_dir(["file_name"])
 @check_files_read_only(["file_name"])
 @record_low_level_step
 async def append_file(file_name: str, content: str, work_dir: str = ".", **kwargs):
@@ -161,7 +161,7 @@ async def append_file(file_name: str, content: str, work_dir: str = ".", **kwarg
         raise EnvException(f"cannot append file {file_name}")
 
 
-@check_file_in_work_dir(["source", "destination"])
+@check_files_in_work_dir(["source", "destination"])
 @check_files_read_only(["destination"])
 @record_low_level_step
 async def copy_file(source: str, destination: str, work_dir: str = ".", **kwargs):
@@ -178,7 +178,7 @@ async def copy_file(source: str, destination: str, work_dir: str = ".", **kwargs
         )
 
 
-@check_file_in_work_dir(["script_name"])
+@check_files_in_work_dir(["script_name"])
 @record_low_level_step
 async def undo_edit_script(script_name: str, work_dir: str = ".", **kwargs):
     backup_files = glob.glob(os.path.join(work_dir, "backup", f"{script_name}_*"))
@@ -209,7 +209,7 @@ async def undo_edit_script(script_name: str, work_dir: str = ".", **kwargs):
         )
 
 
-@check_file_in_work_dir(["script_name"])
+@check_files_in_work_dir(["script_name"])
 @record_low_level_step
 async def execute_script(script_name: str, work_dir: str = ".", **kwargs):
     # if not os.path.exists(os.path.join(work_dir, script_name)):

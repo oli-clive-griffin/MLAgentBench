@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 class Args:
     task: str = "cifar10"
     log_dir: str = "./logs"
-    work_dir: str = "./workspace"
+    # work_dir: str = "./workspace"
     max_steps: int = 50
     max_time: int = 5 * 60 * 60
     device: int = 0

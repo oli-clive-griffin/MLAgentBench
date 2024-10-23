@@ -10,7 +10,7 @@ from .environment import Environment
 def run(args: Args):
     with Environment(args) as env:
         print("=====================================")
-        print("Benchmark folder name: ", env.benchmark_folder_name)
+        print("Task: ", env.task)
         print("Research problem: ", env.research_problem)
         print(
             "Lower level actions enabled: ",
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # parser.add_argument("--task", type=str, default="debug", help="task name")
     parser.add_argument("--log-dir", type=str, default="./logs", help="log dir")
-    parser.add_argument("--work-dir", type=str, default="./workspace", help="work dir")
+    # parser.add_argument("--work-dir", type=str, default="./workspace", help="work dir")
     parser.add_argument("--max-steps", type=int, default=50, help="number of steps")
     parser.add_argument("--max-time", type=int, default=5 * 60 * 60, help="max time")
     parser.add_argument("--device", type=int, default=0, help="device id")

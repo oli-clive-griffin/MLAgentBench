@@ -30,14 +30,18 @@ def setup_log_dir(log_dir: str):
         print("tools_log_dir {} already exists".format(os.path.join(log_dir, "traces")))
         # raise ValueError("log_dir {} already exists".format(self.log_dir))
     else:
-       os.makedirs(os.path.join(log_dir, "traces")) 
+        os.makedirs(os.path.join(log_dir, "traces"))
 
     print("done setup")
     print(f"{os.getcwd()=}")
     print(f'{os.path.join(log_dir, "traces")=}')
 
 
-async def initialize_task_env(work_dir: str, task_folder_name: str, python: str) -> list[str]:
+PARENT = os.path.dirname(os.path.realpath(__file__))
+TASKS_DIR = os.path.join(PARENT, "tasks")
+
+
+async def initialize_task_env(python: str) -> list[str]:
     # remove the workspace folder if it exists
     # if os.path.exists(work_dir):
     #     print(f"removing {work_dir}")
@@ -45,46 +49,46 @@ async def initialize_task_env(work_dir: str, task_folder_name: str, python: str)
     # else:
     #     print(f"{work_dir} does not exist, not removing")
 
-    task_dir = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)),
-        "tasks",
-        task_folder_name,
-    )
-
-    # prepare if there is a prepare.py and it has not been prepared
-    await prepare_task(task_dir, python)
-
-    # copy the tasks folder to work_dir
-    if os.path.exists(os.path.join(task_dir, "env")):
-        print(f"copying {os.path.join(task_dir, 'env')} to {work_dir}")
-        shutil.copytree(os.path.join(task_dir, "env"), work_dir, symlinks=True)
-    else:
-        print(f"task_dir {task_dir} does not contain env")
+    await run_prepare_script(python)
 
     # find all read only files
-    read_only_files: list[str] = []
-    if os.path.exists(os.path.join(task_dir, "scripts", "read_only_files.txt")):
-        ignore_files = (
-            open(os.path.join(task_dir, "scripts", "read_only_files.txt"), "r")
-            .read()
-            .split("\n")
-        )
-        for path, subdirs, files in os.walk(os.path.join(work_dir)):
-            relpath = os.path.relpath(path, work_dir)
-            # filter out the files that are read only
-            filenames = [os.path.join(relpath, filename) for filename in files]
-            for ignore in ignore_files:
-                ignore_filenames = [n for n in filenames if fnmatch.fnmatch(n, ignore)]
-                read_only_files.extend(ignore_filenames)
+    all_read_only_patterns: list[str] = []
+    if await sb_file_exists(os.path.join("scripts", "read_only_files.txt")):
+        sandbox().exec
+        readonly_patterns = (
+            await sandbox().read_file(os.path.join("scripts", "read_only_files.txt"))
+        ).split("\n")
 
-    # init backup folder and remove all content if it exists
-    if os.path.exists(os.path.join(work_dir, "backup")):
-        shutil.rmtree(os.path.join(work_dir, "backup"))
+        present_files = await get_all_files('.')
+        for fname in present_files:
+            if any(fnmatch.fnmatch(fname, pattern) for pattern in readonly_patterns):
+                all_read_only_patterns.append(fname)
 
-    os.makedirs(os.path.join(work_dir, "backup"), exist_ok=True)
 
-    return read_only_files
+    # # init backup folder and remove all content if it exists
+    # if os.path.exists(os.path.join(work_dir, "backup")):
+    #     shutil.rmtree(os.path.join(work_dir, "backup"))
 
+    # os.makedirs(os.path.join(work_dir, "backup"), exist_ok=True)
+
+    return all_read_only_patterns
+
+WALK_SCRIPT = '''
+import os,json,sys
+print(json.dumps(list(os.walk(sys.argv[1] if len(sys.argv)>1 else "."))))
+'''
+
+async def sandbox_walk(start_path='.'):
+    res = await sandbox().exec(['python', '-'], input=WALK_SCRIPT.encode(), cwd=start_path)
+    return json.loads(res.stdout)
+
+async def get_all_files(basedir: str) -> list[str]:
+    all_files = []
+    for path, subdirs, local_fnames in await sandbox_walk(basedir):
+        relpath = os.path.relpath(path, basedir)
+        for local_fname in local_fnames:
+            all_files.append(os.path.join(relpath, local_fname))
+    return all_files
 
 # TODO(oli): standardise task string names into enum or literal type
 def get_research_problem(task: str) -> str:
@@ -140,29 +144,28 @@ def get_research_problem(task: str) -> str:
 
 #     return benchmark_folder_name, research_problem
 
+
 async def sb_file_exists(path: str) -> bool:
     return (await sandbox().exec(["ls", "-la", path])).stdout.strip() != ""
 
-async def prepare_task(task_dir, python="python"):
-    """Run prepare.py in the scripts folder of the benchmark if it exists and has not been run yet."""
-    prepare_script_path = os.path.join(task_dir, "scripts", "prepare.py")
-    prepare_script_exists = await sb_file_exists(prepare_script_path)
 
-    if prepare_script_exists:
-        print("Running prepare.py ...")
-        p = await sandbox().exec(
-            [python, "prepare.py"], cwd=os.path.join(task_dir, "scripts")
-        )
-        if p.returncode != 0:
-            print("prepare.py failed")
-            print(p)
-            sys.exit(1)
-        else:
-            with open(os.path.join(task_dir, "scripts", "prepared"), "w") as f:
-                f.write("success")
-        print("prepare.py finished")
-    else:
-        print("prepare.py not found or already prepared")
+async def run_prepare_script(python="python"):
+    """Run prepare.py in the scripts folder of the benchmark if it exists and has not been run yet."""
+    prepare_script_exists = await sb_file_exists(os.path.join("scripts", "prepare.py"))
+
+    if not prepare_script_exists:
+        print("prepare.py not found")
+        return
+
+    print("Running prepare.py ...")
+    response = await sandbox().exec([python, "prepare.py"], cwd="scripts")
+
+    if response.returncode != 0:
+        print("prepare.py failed")
+        print(response)
+        sys.exit(1)
+
+    print("finished running prepare.py")
 
 
 # if __name__ == "__main__":

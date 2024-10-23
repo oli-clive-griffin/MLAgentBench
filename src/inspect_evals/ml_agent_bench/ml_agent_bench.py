@@ -1,4 +1,4 @@
-from inspect_ai import Task, task
+from inspect_ai import Task, eval, task
 from inspect_ai.dataset import MemoryDataset, Sample
 
 from inspect_evals.ml_agent_bench.adapter import research_agent
@@ -34,4 +34,8 @@ def ml_agent_bench() -> Task:
         ),
         solver=research_agent(Args()),
     )
-    
+
+
+if __name__ == "__main__":
+    # vary the system prompt
+    eval(ml_agent_bench(), model="openai/gpt-4o-mini", sandbox="local")

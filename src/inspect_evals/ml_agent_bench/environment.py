@@ -10,10 +10,12 @@ import time
 from multiprocessing import active_children
 from traceback import format_exception
 
+from inspect_ai.util import sandbox
+
 from .args import Args
 from .high_level_actions import HIGH_LEVEL_ACTION_INFOS
 from .low_level_actions import LOW_LEVEL_ACTION_INFOS
-from .prepare_task import get_research_problem, initialize_task_env, setup_log_dir
+from .prepare_task import get_research_problem, setup_log_dir
 from .schema import (
     Action,
     ActionInfo,
@@ -37,10 +39,10 @@ class Environment:
         self._log_dir = os.path.join(args.log_dir, "env_log")
         setup_log_dir(self._log_dir)
 
-        self._benchmark_folder_name = args.task
-        self._research_problem = get_research_problem(self._benchmark_folder_name)
+        self._task = args.task
+        self._research_problem = get_research_problem(self._task)
 
-        self._work_dir = os.path.join(args.work_dir, self._benchmark_folder_name)
+        # self._work_dir = args.work_dir
         self._read_only_files = read_only_files
 
         self._action_infos = {
@@ -51,7 +53,7 @@ class Environment:
         self._static_kwargs_for_tools = {
             "device": args.device,
             "python": args.python,
-            "work_dir": self._work_dir,
+            # "work_dir": self._work_dir,
             "read_only_files": self._read_only_files,
             "research_problem": self._research_problem,
         }
@@ -64,8 +66,8 @@ class Environment:
         return self._research_problem
 
     @property
-    def benchmark_folder_name(self) -> str:
-        return self._benchmark_folder_name
+    def task(self) -> str:
+        return self._task
 
     @property
     def action_infos(self) -> dict[str, ActionInfo]:
@@ -196,39 +198,40 @@ class Environment:
 
         self.trace.steps.append(Step(action, observation, step_time))
 
-        self.save(curr_step)
+        # self.save(curr_step)
         return observation
 
-    def save(self, curr_step):
-        """Save the trace and snapshot of the workspace folder"""
-        with open(os.path.join(self._log_dir, "trace.json"), "w") as f:
-            json.dump(self.trace, f, indent=4, cls=EnhancedJSONEncoder)
+    # def save(self, curr_step: int):
+    #     """Save the trace and snapshot of the workspace folder"""
+    #     with open(os.path.join(self._log_dir, "trace.json"), "w") as f:
+    #         json.dump(self.trace, f, indent=4, cls=EnhancedJSONEncoder)
 
-        ##### save a snapshot of the current step
-        save_folder = os.path.join(self._log_dir, f"traces/step_{curr_step}_files")
-        if os.path.exists(save_folder):
-            shutil.rmtree(save_folder)
-        os.makedirs(save_folder)
+    #     ##### save a snapshot of the current step
+    #     save_folder = os.path.join(self._log_dir, f"traces/step_{curr_step}_files")
+    #     if os.path.exists(save_folder):
+    #         shutil.rmtree(save_folder)
+    #     os.makedirs(save_folder)
 
-        # save files in the folder that are not read only
-        for path, subdirs, files in os.walk(os.path.join(self._work_dir)):
-            relpath = os.path.relpath(path, self._work_dir)
-            dest = os.path.join(save_folder, relpath)
+        
+    #     # save files in the folder that are not read only
+    #     for path, subdirs, files in os.walk(os.path.join(self._work_dir)):
+    #         relpath = os.path.relpath(path, self._work_dir)
+    #         dest = os.path.join(save_folder, relpath)
 
-            for file_name in files:
-                file_path = os.path.join(relpath, file_name)
-                if file_path not in self._read_only_files:
-                    # check wether the file to copy is part of self.log_dir
-                    if os.path.abspath(
-                        os.path.join(self._work_dir, file_path)
-                    ).startswith(os.path.abspath(self._log_dir.split("/env_log")[0])):
-                        continue
-                    if not os.path.exists(dest):
-                        os.makedirs(dest)
-                    shutil.copyfile(
-                        os.path.join(self._work_dir, file_path),
-                        os.path.join(save_folder, file_path),
-                    )
+    #         for file_name in files:
+    #             file_path = os.path.join(relpath, file_name)
+    #             if file_path not in self._read_only_files:
+    #                 # check wether the file to copy is part of self.log_dir
+    #                 if os.path.abspath(
+    #                     os.path.join(self._work_dir, file_path)
+    #                 ).startswith(os.path.abspath(self._log_dir.split("/env_log")[0])):
+    #                     continue
+    #                 if not os.path.exists(dest):
+    #                     os.makedirs(dest)
+    #                 shutil.copyfile(
+    #                     os.path.join(self._work_dir, file_path),
+    #                     os.path.join(save_folder, file_path),
+    #                 )
 
     @property
     def low_level_actions(self):
